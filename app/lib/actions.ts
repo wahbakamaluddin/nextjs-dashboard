@@ -33,10 +33,14 @@ export async function createInvoice(formData: FormData) {
     const date = new Date().toISOString().split('T')[0];
 
     // executes SQL statements
-    await sql `
-        INSERT INTO invoices (customer_id, amount, status, date)
-        VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
-    `;
+    try {
+        await sql `
+            INSERT INTO invoices (customer_id, amount, status, date)
+            VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
+        `;
+    } catch (error) {
+        console.log('error')
+    }
 
     // clear cache of /dashboard/invoices so fresh data including new invoice is fetched
     revalidatePath('/dashboard/invoices');
@@ -45,6 +49,12 @@ export async function createInvoice(formData: FormData) {
 }
 
 export async function deleteInvoice(id: string) {
-  await sql`DELETE FROM invoices WHERE id = ${id}`;
-  revalidatePath('/dashboard/invoices');
+     
+    try {
+        await sql`DELETE FROM invoices WHERE id = ${id}`;
+            revalidatePath('/dashboard/invoices');
+    } catch (error) {
+        console.log('Error')
+    }
+
 }
