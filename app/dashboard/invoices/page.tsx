@@ -6,6 +6,17 @@ import { lusitana } from '@/app/ui/fonts';
 import { InvoicesTableSkeleton } from '@/app/ui/skeletons';
 import { Suspense } from 'react';
 import { fetchInvoicesPages } from '@/app/lib/data';
+import { Metadata } from 'next';
+
+// metadata for specific page
+// export const metadata: Metadata = {
+//   title: 'Invoices | Acme Dashboard',
+// };
+
+// metadata from layout.tsx
+export const metadata: Metadata = {
+  title: 'Invoices',
+};
 
 // the page will receive a props which may have an object searchParams which have query and page strings
 export default async function Page(props: {
