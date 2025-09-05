@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import postgres from 'postgres';
+import { error } from 'console';
 
 // define server connection
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
@@ -12,21 +13,50 @@ const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 // validate form's data type usig zod before saving to dbase
 const FormSchema = z.object({
     id: z.string(),
-    customerId: z.string(),
-    // change type to number, also validates it
-    amount: z.coerce.number(),
-    status: z.enum(['pending', 'paid']),
+    customerId: z.string({
+        invalid_type_error: 'Please select a customer.',
+    }),
+    // .coerce change type to number, also validates it
+    amount: z.coerce
+        .number()
+        .gt(0, { message: 'Please enter an amount greater that $0.' }),
+    status: z.enum(['pending', 'paid'], {
+        invalid_type_error: 'Please select an invoice status.',
+    }),
     date: z.string(),
 })
 
 const CreateInvoice = FormSchema.omit({ id: true, date: true})
 
-export async function createInvoice(formData: FormData) {
-    const { customerId, amount, status } = CreateInvoice.parse({
+export type State = {
+    errors?: {
+        customerId?: string[];
+        amount?: string[];
+        status?: string[];
+    };
+    message?: string | null;
+}
+
+// createInvoice() accept formData and prevState(contains state passsed from useActionState)
+export async function createInvoice(prevState: State, formData: FormData) {
+
+    // validate form fields using Zod
+    // safeParsr() return object containing success or error field
+    const validateFields = CreateInvoice.safeParse({
         customerId: formData.get('customerId'),
         amount: formData.get('amount'),
         status: formData.get('status'),
-    });
+    })
+
+    // if form validation returns fails, return error
+    if (!validateFields.success) {
+        return {
+            errors: validateFields.error.flatten().fieldErrors,
+            message: 'Missing Fields. Failed to Create Invoice.',
+        }
+    }
+
+    const { customerId, amount, status } = validateFields.data;
     // convert amount to cents
     const amountInCents = amount * 100;
     // generate date with YYYY-MM-DD format
@@ -40,6 +70,9 @@ export async function createInvoice(formData: FormData) {
         `;
     } catch (error) {
         console.log('error')
+        return {
+            message: 'Database Error: Failde to Create Invoice'
+        }
     }
 
     // clear cache of /dashboard/invoices so fresh data including new invoice is fetched
